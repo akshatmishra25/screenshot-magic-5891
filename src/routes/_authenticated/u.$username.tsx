@@ -1,0 +1,128 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/lib/auth";
+import { userReviews } from "@/lib/reviews";
+import { getAlbumSync } from "@/lib/albums";
+import { TIERS, type TierId } from "@/lib/tiers";
+import { AlbumCard } from "@/components/AlbumCard";
+import { cn } from "@/lib/utils";
+
+export const Route = createFileRoute("/_authenticated/u/$username")({
+  head: ({ params }) => ({
+    meta: [
+      { title: `@${params.username} — Lyniv` },
+      { name: "description", content: `Albums logged by @${params.username}, sorted into four vibe tiers.` },
+      { property: "og:title", content: `@${params.username} — Lyniv` },
+      { property: "og:description", content: `Albums logged by @${params.username}, sorted into four vibe tiers.` },
+    ],
+  }),
+  component: ProfilePage,
+});
+
+function ProfilePage() {
+  const { username } = Route.useParams();
+  const { session } = useAuth();
+  const profile = useQuery({
+    queryKey: ["profile", username],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("*").eq("username", username).maybeSingle();
+      return data;
+    },
+  });
+  const p = profile.data;
+  const reviews = useQuery({ queryKey: ["reviews", "user", p?.id], enabled: !!p, queryFn: () => userReviews(p!.id) });
+  const [tab, setTab] = useState<TierId>("holy_grail");
+  const [editing, setEditing] = useState(false);
+
+  if (profile.isLoading) return <div className="p-10 text-muted-foreground">Loading…</div>;
+  if (!p) return <div className="p-10">User not found.</div>;
+  const isMe = session?.user.id === p.id;
+  const name = p.display_name || p.username;
+  const list = reviews.data ?? [];
+
+  return (
+    <div>
+      <div className="bg-hero px-4 pb-8 pt-10 md:px-10">
+        <div className="flex flex-col gap-6 md:flex-row md:items-end">
+          {p.avatar_url ? (
+            <img src={p.avatar_url} alt={name} className="h-36 w-36 rounded-full object-cover shadow-card" />
+          ) : (
+            <div className="flex h-36 w-36 items-center justify-center rounded-full bg-elevated font-display text-5xl font-bold shadow-card">
+              {name[0]?.toUpperCase()}
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold uppercase tracking-widest">Profile</p>
+            <h1 className="mt-1 text-4xl font-bold md:text-6xl">{name}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">@{p.username} · <span className="font-bold text-foreground">{list.length}</span> albums logged</p>
+            {p.bio && <p className="mt-3 max-w-xl text-sm">{p.bio}</p>}
+          </div>
+          {isMe && (
+            <button onClick={() => setEditing((v) => !v)} className="self-start rounded-full border px-4 py-2 text-sm font-bold hover:border-foreground md:self-end">
+              {editing ? "Close" : "Edit profile"}
+            </button>
+          )}
+        </div>
+        {isMe && editing && <EditProfile profile={p} onDone={() => setEditing(false)} />}
+      </div>
+
+      <div className="px-4 md:px-10">
+        <div className="scrollbar-none flex gap-2 overflow-x-auto pb-2">
+          {TIERS.map((t) => {
+            const n = list.filter((r) => r.tier === t.id).length;
+            return (
+              <button
+                key={t.id}
+                onClick={() => setTab(t.id)}
+                className={cn(
+                  "shrink-0 rounded-full px-4 py-2 text-sm font-bold transition",
+                  tab === t.id ? `${t.bg} text-primary-foreground` : "bg-elevated text-foreground hover:bg-muted",
+                )}
+              >
+                {t.emoji} {t.name} <span className="opacity-70">{n}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          {list.filter((r) => r.tier === tab).map((r) => {
+            const a = getAlbumSync(r.album_id);
+            return a ? <AlbumCard key={r.id} album={a} /> : null;
+          })}
+        </div>
+        {list.filter((r) => r.tier === tab).length === 0 && (
+          <p className="mt-6 text-sm text-muted-foreground">Nothing in this tier yet.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function EditProfile({ profile, onDone }: { profile: { id: string; username: string; display_name: string | null; bio: string | null; avatar_url: string | null }; onDone: () => void }) {
+  const qc = useQueryClient();
+  const [display, setDisplay] = useState(profile.display_name ?? "");
+  const [bio, setBio] = useState(profile.bio ?? "");
+  const [avatar, setAvatar] = useState(profile.avatar_url ?? "");
+  const save = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("profiles").update({
+        display_name: display.trim() || null, bio: bio.trim().slice(0, 160) || null, avatar_url: avatar.trim() || null,
+      }).eq("id", profile.id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Profile updated"); qc.invalidateQueries({ queryKey: ["profile"] }); onDone(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const input = "w-full rounded-md bg-elevated px-3 py-2 text-sm outline-none ring-primary focus:ring-2";
+  return (
+    <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="mt-6 grid max-w-xl gap-3 rounded-xl bg-card p-4">
+      <input className={input} placeholder="Display name" value={display} onChange={(e) => setDisplay(e.target.value)} maxLength={50} />
+      <input className={input} placeholder="Avatar image URL" value={avatar} onChange={(e) => setAvatar(e.target.value)} />
+      <textarea className={input} placeholder="Short bio" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={160} rows={2} />
+      <button disabled={save.isPending} className="rounded-full bg-primary py-2 text-sm font-bold text-primary-foreground disabled:opacity-50">Save</button>
+    </form>
+  );
+}
