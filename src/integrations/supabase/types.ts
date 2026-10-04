@@ -14,7 +14,71 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      reviews: {
+        Row: {
+          album_id: string
+          body: string | null
+          created_at: string
+          id: string
+          tier: Database["public"]["Enums"]["vibe_tier"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          album_id: string
+          body?: string | null
+          created_at?: string
+          id?: string
+          tier: Database["public"]["Enums"]["vibe_tier"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          album_id?: string
+          body?: string | null
+          created_at?: string
+          id?: string
+          tier?: Database["public"]["Enums"]["vibe_tier"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +87,11 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      vibe_tier:
+        | "holy_grail"
+        | "active_rotation"
+        | "lofi_beats"
+        | "sonic_pollution"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +218,13 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      vibe_tier: [
+        "holy_grail",
+        "active_rotation",
+        "lofi_beats",
+        "sonic_pollution",
+      ],
+    },
   },
 } as const
