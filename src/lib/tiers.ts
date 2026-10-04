@@ -23,4 +23,4 @@ export const TIERS: {
     text: "text-tier-pollution", bg: "bg-tier-pollution", border: "border-tier-pollution", soft: "bg-tier-pollution/15" },
 ];
 
-export const tierById = (id: string) => TIERS.find((t) => t.id === id) ?? TIERS[0];
+export const tierById = (id: string) => TIERS.find((t) => t.id === id) ?? TIERS[0]!;
