@@ -12,9 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedDiscoverRouteImport } from './routes/_authenticated/discover'
-import { Route as AuthenticatedSearchRouteImport } from './routes/_authenticated/search'
-import { Route as AuthenticatedAlbumIdRouteImport } from './routes/_authenticated/album.$id'
+import { Route as DiscoverRouteImport } from './routes/discover'
+import { Route as SearchRouteImport } from './routes/search'
+import { Route as AlbumIdRouteImport } from './routes/album.$id'
 import { Route as AuthenticatedUUsernameRouteImport } from './routes/_authenticated/u.$username'
 
 const IndexRoute = IndexRouteImport.update({
@@ -31,20 +31,20 @@ const AuthRoute = AuthRouteImport.update({
   path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedDiscoverRoute = AuthenticatedDiscoverRouteImport.update({
+const DiscoverRoute = DiscoverRouteImport.update({
   id: '/discover',
   path: '/discover',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedSearchRoute = AuthenticatedSearchRouteImport.update({
+const SearchRoute = SearchRouteImport.update({
   id: '/search',
   path: '/search',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedAlbumIdRoute = AuthenticatedAlbumIdRouteImport.update({
+const AlbumIdRoute = AlbumIdRouteImport.update({
   id: '/album/$id',
   path: '/album/$id',
-  getParentRoute: () => AuthenticatedRouteRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedUUsernameRoute = AuthenticatedUUsernameRouteImport.update({
   id: '/u/$username',
@@ -55,17 +55,17 @@ const AuthenticatedUUsernameRoute = AuthenticatedUUsernameRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/discover': typeof AuthenticatedDiscoverRoute
-  '/search': typeof AuthenticatedSearchRoute
-  '/album/$id': typeof AuthenticatedAlbumIdRoute
+  '/discover': typeof DiscoverRoute
+  '/search': typeof SearchRoute
+  '/album/$id': typeof AlbumIdRoute
   '/u/$username': typeof AuthenticatedUUsernameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/discover': typeof AuthenticatedDiscoverRoute
-  '/search': typeof AuthenticatedSearchRoute
-  '/album/$id': typeof AuthenticatedAlbumIdRoute
+  '/discover': typeof DiscoverRoute
+  '/search': typeof SearchRoute
+  '/album/$id': typeof AlbumIdRoute
   '/u/$username': typeof AuthenticatedUUsernameRoute
 }
 export interface FileRoutesById {
@@ -73,9 +73,9 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_authenticated/discover': typeof AuthenticatedDiscoverRoute
-  '/_authenticated/search': typeof AuthenticatedSearchRoute
-  '/_authenticated/album/$id': typeof AuthenticatedAlbumIdRoute
+  '/discover': typeof DiscoverRoute
+  '/search': typeof SearchRoute
+  '/album/$id': typeof AlbumIdRoute
   '/_authenticated/u/$username': typeof AuthenticatedUUsernameRoute
 }
 export interface FileRouteTypes {
@@ -89,9 +89,9 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
-    | '/_authenticated/discover'
-    | '/_authenticated/search'
-    | '/_authenticated/album/$id'
+    | '/discover'
+    | '/search'
+    | '/album/$id'
     | '/_authenticated/u/$username'
   fileRoutesById: FileRoutesById
 }
@@ -99,6 +99,9 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  DiscoverRoute: typeof DiscoverRoute
+  SearchRoute: typeof SearchRoute
+  AlbumIdRoute: typeof AlbumIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -124,26 +127,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/discover': {
-      id: '/_authenticated/discover'
+    '/discover': {
+      id: '/discover'
       path: '/discover'
       fullPath: '/discover'
-      preLoaderRoute: typeof AuthenticatedDiscoverRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof DiscoverRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/search': {
-      id: '/_authenticated/search'
+    '/search': {
+      id: '/search'
       path: '/search'
       fullPath: '/search'
-      preLoaderRoute: typeof AuthenticatedSearchRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/album/$id': {
-      id: '/_authenticated/album/$id'
+    '/album/$id': {
+      id: '/album/$id'
       path: '/album/$id'
       fullPath: '/album/$id'
-      preLoaderRoute: typeof AuthenticatedAlbumIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+      preLoaderRoute: typeof AlbumIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/u/$username': {
       id: '/_authenticated/u/$username'
@@ -156,16 +159,10 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedDiscoverRoute: typeof AuthenticatedDiscoverRoute
-  AuthenticatedSearchRoute: typeof AuthenticatedSearchRoute
-  AuthenticatedAlbumIdRoute: typeof AuthenticatedAlbumIdRoute
   AuthenticatedUUsernameRoute: typeof AuthenticatedUUsernameRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedDiscoverRoute: AuthenticatedDiscoverRoute,
-  AuthenticatedSearchRoute: AuthenticatedSearchRoute,
-  AuthenticatedAlbumIdRoute: AuthenticatedAlbumIdRoute,
   AuthenticatedUUsernameRoute: AuthenticatedUUsernameRoute,
 }
 
@@ -176,6 +173,9 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  DiscoverRoute: DiscoverRoute,
+  SearchRoute: SearchRoute,
+  AlbumIdRoute: AlbumIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
