@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Home, Search, User, LogOut, Disc3 } from "lucide-react";
+import { Home, Search, User, LogOut, LogIn, Disc3 } from "lucide-react";
 import type { ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -28,6 +28,7 @@ export function Logo() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const { data: me } = useMyProfile();
+  const { session } = useAuth();
   const qc = useQueryClient();
   const navigate = useNavigate();
   const signOut = async () => {
@@ -52,7 +53,13 @@ export function AppShell({ children }: { children: ReactNode }) {
             </Link>
           )}
         </nav>
-        <button onClick={signOut} className={`${navCls} mt-auto`}><LogOut className="h-5 w-5" />Sign out</button>
+        {session ? (
+          <button onClick={signOut} className={`${navCls} mt-auto`}><LogOut className="h-5 w-5" />Sign out</button>
+        ) : (
+          <Link to="/auth" className="mt-auto flex items-center justify-center gap-2 rounded-full bg-primary py-3 text-sm font-bold text-primary-foreground transition hover:scale-[1.02]">
+            <LogIn className="h-4 w-4" />Sign in
+          </Link>
+        )}
       </aside>
 
       <main className="min-w-0 flex-1 pb-24 md:pb-10">{children}</main>
@@ -71,9 +78,15 @@ export function AppShell({ children }: { children: ReactNode }) {
             <User className="h-6 w-6" />Profile
           </Link>
         )}
-        <button onClick={signOut} className="flex flex-col items-center gap-1 px-4 text-[11px] text-muted-foreground">
-          <LogOut className="h-6 w-6" />Exit
-        </button>
+        {session ? (
+          <button onClick={signOut} className="flex flex-col items-center gap-1 px-4 text-[11px] text-muted-foreground">
+            <LogOut className="h-6 w-6" />Exit
+          </button>
+        ) : (
+          <Link to="/auth" className="flex flex-col items-center gap-1 px-4 text-[11px] text-muted-foreground">
+            <LogIn className="h-6 w-6" />Sign in
+          </Link>
+        )}
       </nav>
     </div>
   );
