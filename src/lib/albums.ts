@@ -3,6 +3,8 @@
  * implementation for a Spotify-backed one (e.g. server functions calling the
  * Spotify Web API) without touching any UI code.
  */
+import { searchSpotifyAlbums, getSpotifyAlbumDetails } from '../services/spotify';
+
 export type Album = {
   id: string;
   title: string;
@@ -20,6 +22,39 @@ export interface MusicSource {
   getAlbum(id: string): Promise<Album | null>;
   trending(): Promise<Album[]>;
 }
+
+/** Helper to map raw Spotify responses to Lyniv's strict Album type */
+function normalizeSpotifyAlbum(raw: any): Album {
+  return {
+    id: raw.id,
+    title: raw.title || raw.name || "Unknown Title",
+    artist: raw.artist || "Unknown Artist",
+    year: typeof raw.year === 'number' ? raw.year : parseInt(raw.year) || new Date().getFullYear(),
+    genre: raw.genre || "Pop", // Default fallback for UI filters
+    coverUrl: raw.coverUrl || raw.images?.[0]?.url || "",
+    hues: raw.hues || [220, 260], // Fallback background gradient hues
+    tracks: Array.isArray(raw.tracks)
+      ? raw.tracks.map((t: any) => (typeof t === 'string' ? t : t.title || t.name))
+      : [],
+  };
+}
+
+export const spotifyMusicSource: MusicSource = {
+  search: async (query: string): Promise<Album[]> => {
+    const rawResults = await searchSpotifyAlbums(query);
+    return rawResults.map(normalizeSpotifyAlbum);
+  },
+  getAlbum: async (id: string): Promise<Album | null> => {
+    const rawAlbum = await getSpotifyAlbumDetails(id);
+    if (!rawAlbum) return null;
+    return normalizeSpotifyAlbum(rawAlbum);
+  },
+  trending: async (): Promise<Album[]> => {
+    // Queries Spotify for popular/new items as default landing view
+    const rawTrending = await searchSpotifyAlbums('tag:new');
+    return rawTrending.map(normalizeSpotifyAlbum);
+  }
+};
 
 const ALBUMS: Album[] = [
   { id: "to-pimp-a-butterfly", title: "To Pimp a Butterfly", artist: "Kendrick Lamar", year: 2015, genre: "Hip-Hop", hues: [40, 10],
@@ -70,8 +105,8 @@ export const mockMusicSource: MusicSource = {
   },
 };
 
-/** Active source — replace with a Spotify implementation later. */
-export const musicSource: MusicSource = mockMusicSource;
+/** Active source — dynamically points to live Spotify data. */
+export const musicSource: MusicSource = spotifyMusicSource;
 
-/** Synchronous lookup for rendering cached review rows. */
+/** Synchronous lookup fallback for local static mock data. */
 export const getAlbumSync = (id: string) => ALBUMS.find((a) => a.id === id) ?? null;

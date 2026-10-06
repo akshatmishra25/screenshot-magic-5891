@@ -4,8 +4,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
-import { userReviews } from "@/lib/reviews";
-import { getAlbumSync } from "@/lib/albums";
+import { userReviews, type ReviewRow } from "@/lib/reviews";
+import { musicSource, getAlbumSync } from "@/lib/albums";
 import { TIERS, type TierId } from "@/lib/tiers";
 import { AlbumCard } from "@/components/AlbumCard";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,29 @@ export const Route = createFileRoute("/_authenticated/u/$username")({
   }),
   component: ProfilePage,
 });
+
+function ReviewAlbumCard({ review }: { review: ReviewRow }) {
+  const { data: album, isLoading } = useQuery({
+    queryKey: ["album", review.album_id],
+    queryFn: async () => {
+      const fetchedAlbum = await musicSource.getAlbum(review.album_id);
+      if (fetchedAlbum) return fetchedAlbum;
+      return getAlbumSync(review.album_id) ?? null;
+    },
+    staleTime: 1000 * 60 * 30,
+    enabled: Boolean(review.album_id),
+  });
+
+  if (isLoading) {
+    return (
+      <div className="aspect-square w-full animate-pulse rounded-lg bg-muted/60" />
+    );
+  }
+
+  if (!album) return null;
+
+  return <AlbumCard album={album} />;
+}
 
 function ProfilePage() {
   const { username } = Route.useParams();
@@ -42,6 +65,7 @@ function ProfilePage() {
   const isMe = session?.user.id === p.id;
   const name = p.display_name || p.username;
   const list = reviews.data ?? [];
+  const activeList = list.filter((r) => r.tier === tab);
 
   return (
     <div>
@@ -57,11 +81,16 @@ function ProfilePage() {
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold uppercase tracking-widest">Profile</p>
             <h1 className="mt-1 text-4xl font-bold md:text-6xl">{name}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">@{p.username} · <span className="font-bold text-foreground">{list.length}</span> albums logged</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              @{p.username} · <span className="font-bold text-foreground">{list.length}</span> albums logged
+            </p>
             {p.bio && <p className="mt-3 max-w-xl text-sm">{p.bio}</p>}
           </div>
           {isMe && (
-            <button onClick={() => setEditing((v) => !v)} className="self-start rounded-full border px-4 py-2 text-sm font-bold hover:border-foreground md:self-end">
+            <button
+              onClick={() => setEditing((v) => !v)}
+              className="self-start rounded-full border px-4 py-2 text-sm font-bold hover:border-foreground md:self-end"
+            >
               {editing ? "Close" : "Edit profile"}
             </button>
           )}
@@ -79,7 +108,7 @@ function ProfilePage() {
                 onClick={() => setTab(t.id)}
                 className={cn(
                   "shrink-0 rounded-full px-4 py-2 text-sm font-bold transition",
-                  tab === t.id ? `${t.bg} text-primary-foreground` : "bg-elevated text-foreground hover:bg-muted",
+                  tab === t.id ? `${t.bg} text-primary-foreground` : "bg-elevated text-foreground hover:bg-muted"
                 )}
               >
                 {t.emoji} {t.name} <span className="opacity-70">{n}</span>
@@ -87,13 +116,14 @@ function ProfilePage() {
             );
           })}
         </div>
+
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {list.filter((r) => r.tier === tab).map((r) => {
-            const a = getAlbumSync(r.album_id);
-            return a ? <AlbumCard key={r.id} album={a} /> : null;
-          })}
+          {activeList.map((r) => (
+            <ReviewAlbumCard key={r.id} review={r} />
+          ))}
         </div>
-        {list.filter((r) => r.tier === tab).length === 0 && (
+
+        {activeList.length === 0 && (
           <p className="mt-6 text-sm text-muted-foreground">Nothing in this tier yet.</p>
         )}
       </div>
@@ -101,28 +131,72 @@ function ProfilePage() {
   );
 }
 
-function EditProfile({ profile, onDone }: { profile: { id: string; username: string; display_name: string | null; bio: string | null; avatar_url: string | null }; onDone: () => void }) {
+function EditProfile({
+  profile,
+  onDone,
+}: {
+  profile: { id: string; username: string; display_name: string | null; bio: string | null; avatar_url: string | null };
+  onDone: () => void;
+}) {
   const qc = useQueryClient();
   const [display, setDisplay] = useState(profile.display_name ?? "");
   const [bio, setBio] = useState(profile.bio ?? "");
   const [avatar, setAvatar] = useState(profile.avatar_url ?? "");
   const save = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("profiles").update({
-        display_name: display.trim() || null, bio: bio.trim().slice(0, 160) || null, avatar_url: avatar.trim() || null,
-      }).eq("id", profile.id);
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          display_name: display.trim() || null,
+          bio: bio.trim().slice(0, 160) || null,
+          avatar_url: avatar.trim() || null,
+        })
+        .eq("id", profile.id);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Profile updated"); qc.invalidateQueries({ queryKey: ["profile"] }); onDone(); },
+    onSuccess: () => {
+      toast.success("Profile updated");
+      qc.invalidateQueries({ queryKey: ["profile"] });
+      onDone();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
   const input = "w-full rounded-md bg-elevated px-3 py-2 text-sm outline-none ring-primary focus:ring-2";
   return (
-    <form onSubmit={(e) => { e.preventDefault(); save.mutate(); }} className="mt-6 grid max-w-xl gap-3 rounded-xl bg-card p-4">
-      <input className={input} placeholder="Display name" value={display} onChange={(e) => setDisplay(e.target.value)} maxLength={50} />
-      <input className={input} placeholder="Avatar image URL" value={avatar} onChange={(e) => setAvatar(e.target.value)} />
-      <textarea className={input} placeholder="Short bio" value={bio} onChange={(e) => setBio(e.target.value)} maxLength={160} rows={2} />
-      <button disabled={save.isPending} className="rounded-full bg-primary py-2 text-sm font-bold text-primary-foreground disabled:opacity-50">Save</button>
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        save.mutate();
+      }}
+      className="mt-6 grid max-w-xl gap-3 rounded-xl bg-card p-4"
+    >
+      <input
+        className={input}
+        placeholder="Display name"
+        value={display}
+        onChange={(e) => setDisplay(e.target.value)}
+        maxLength={50}
+      />
+      <input
+        className={input}
+        placeholder="Avatar image URL"
+        value={avatar}
+        onChange={(e) => setAvatar(e.target.value)}
+      />
+      <textarea
+        className={input}
+        placeholder="Short bio"
+        value={bio}
+        onChange={(e) => setBio(e.target.value)}
+        maxLength={160}
+        rows={2}
+      />
+      <button
+        disabled={save.isPending}
+        className="rounded-full bg-primary py-2 text-sm font-bold text-primary-foreground disabled:opacity-50"
+      >
+        Save
+      </button>
     </form>
   );
 }
