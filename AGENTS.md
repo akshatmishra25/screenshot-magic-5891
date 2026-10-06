@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep Spotify credential exchange in a same-origin TanStack server route, rather than creating a Supabase Edge Function, because this app already provides the serverless request layer.

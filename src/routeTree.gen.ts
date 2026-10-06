@@ -16,6 +16,7 @@ import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as AlbumIdRouteImport } from './routes/album.$id'
 import { Route as AuthenticatedUUsernameRouteImport } from './routes/_authenticated/u.$username'
+import { Route as ApiPublicSpotifyTokenRouteImport } from './routes/api/public/spotify-token'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -51,6 +52,11 @@ const AuthenticatedUUsernameRoute = AuthenticatedUUsernameRouteImport.update({
   path: '/u/$username',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicSpotifyTokenRoute = ApiPublicSpotifyTokenRouteImport.update({
+  id: '/api/public/spotify-token',
+  path: '/api/public/spotify-token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -59,6 +65,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof SearchRoute
   '/album/$id': typeof AlbumIdRoute
   '/u/$username': typeof AuthenticatedUUsernameRoute
+  '/api/public/spotify-token': typeof ApiPublicSpotifyTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/album/$id': typeof AlbumIdRoute
   '/u/$username': typeof AuthenticatedUUsernameRoute
+  '/api/public/spotify-token': typeof ApiPublicSpotifyTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -77,13 +85,27 @@ export interface FileRoutesById {
   '/search': typeof SearchRoute
   '/album/$id': typeof AlbumIdRoute
   '/_authenticated/u/$username': typeof AuthenticatedUUsernameRoute
+  '/api/public/spotify-token': typeof ApiPublicSpotifyTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/auth' | '/discover' | '/search' | '/album/$id' | '/u/$username'
+    | '/'
+    | '/auth'
+    | '/discover'
+    | '/search'
+    | '/album/$id'
+    | '/u/$username'
+    | '/api/public/spotify-token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/discover' | '/search' | '/album/$id' | '/u/$username'
+  to:
+    | '/'
+    | '/auth'
+    | '/discover'
+    | '/search'
+    | '/album/$id'
+    | '/u/$username'
+    | '/api/public/spotify-token'
   id:
     | '__root__'
     | '/'
@@ -93,6 +115,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/album/$id'
     | '/_authenticated/u/$username'
+    | '/api/public/spotify-token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -102,6 +125,7 @@ export interface RootRouteChildren {
   DiscoverRoute: typeof DiscoverRoute
   SearchRoute: typeof SearchRoute
   AlbumIdRoute: typeof AlbumIdRoute
+  ApiPublicSpotifyTokenRoute: typeof ApiPublicSpotifyTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -155,6 +179,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUUsernameRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/spotify-token': {
+      id: '/api/public/spotify-token'
+      path: '/api/public/spotify-token'
+      fullPath: '/api/public/spotify-token'
+      preLoaderRoute: typeof ApiPublicSpotifyTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -176,6 +207,7 @@ const rootRouteChildren: RootRouteChildren = {
   DiscoverRoute: DiscoverRoute,
   SearchRoute: SearchRoute,
   AlbumIdRoute: AlbumIdRoute,
+  ApiPublicSpotifyTokenRoute: ApiPublicSpotifyTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

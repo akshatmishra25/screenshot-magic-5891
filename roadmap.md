@@ -1,0 +1,2 @@
+- [ ] Add a same-origin Spotify token endpoint with server-side secret handling and expiration-aware caching.
+- [ ] Configure the Spotify client credentials after the endpoint is ready.
