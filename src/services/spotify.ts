@@ -8,16 +8,16 @@ export async function getSpotifyAccessToken(): Promise<string> {
     return cachedToken;
   }
 
-  // Call the secure proxy endpoint Lovable created
-  const res = await fetch('/api/public/spotify-token');
+  // Call the secure same-origin proxy endpoint (POST only, returns { accessToken, expiresIn })
+  const res = await fetch('/api/public/spotify-token', { method: 'POST' });
   if (!res.ok) {
     throw new Error('Failed to fetch Spotify access token');
   }
 
   const data = await res.json();
-  cachedToken = data.access_token;
+  cachedToken = data.accessToken;
   // Expire 60 seconds early to avoid edge cases
-  tokenExpiryTime = Date.now() + (data.expires_in - 60) * 1000;
+  tokenExpiryTime = Date.now() + (data.expiresIn - 60) * 1000;
   return cachedToken!;
 }
 
