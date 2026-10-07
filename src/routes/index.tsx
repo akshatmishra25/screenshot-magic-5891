@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Disc3 } from "lucide-react";
 import { TIERS } from "@/lib/tiers";
-import { getAlbumSync } from "@/lib/albums";
+import { musicSource, getAlbumSync } from "@/lib/albums";
 import { AlbumCover } from "@/components/AlbumCover";
 import { useAuth } from "@/lib/auth";
 
@@ -18,7 +19,15 @@ export const Route = createFileRoute("/")({
   component: Landing,
 });
 
-const SHOWCASE = ["to-pimp-a-butterfly", "brat", "currents", "ok-computer", "sos", "igor"];
+/** Featured albums: mock id doubles as the instant placeholder; query finds the live Spotify release. */
+const SHOWCASE = [
+  { mockId: "to-pimp-a-butterfly", query: "To Pimp a Butterfly Kendrick Lamar" },
+  { mockId: "brat", query: "BRAT Charli xcx" },
+  { mockId: "currents", query: "Currents Tame Impala" },
+  { mockId: "ok-computer", query: "OK Computer Radiohead" },
+  { mockId: "sos", query: "SOS SZA" },
+  { mockId: "igor", query: "IGOR Tyler, The Creator" },
+];
 
 function Landing() {
   const { session } = useAuth();
