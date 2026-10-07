@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { musicSource } from "@/lib/albums";
 import { recentReviews } from "@/lib/reviews";
+import { useAuth } from "@/lib/auth";
 import { AlbumCard } from "@/components/AlbumCard";
 import { ReviewCard } from "@/components/ReviewCard";
 import { SearchBar } from "@/components/SearchBar";
@@ -23,8 +24,14 @@ export const Route = createFileRoute("/discover")({
 function Discover() {
   const [q, setQ] = useState("");
   const navigate = useNavigate();
+  const { session, loading: authLoading } = useAuth();
+  const userId = session?.user.id ?? null;
   const trending = useQuery({ queryKey: ["trending"], queryFn: () => musicSource.trending() });
-  const reviews = useQuery({ queryKey: ["reviews", "recent"], queryFn: () => recentReviews(20) });
+  const reviews = useQuery({
+    queryKey: ["reviews", "recent", userId ?? "guest"],
+    queryFn: () => recentReviews(20, userId),
+    enabled: !authLoading,
+  });
 
   return (
     <AppShell>
@@ -37,7 +44,12 @@ function Discover() {
         </div>
 
         <section className="mt-10">
-          <h2 className="mb-3 px-4 text-xl font-bold md:px-10">Recent Friend Reviews</h2>
+          <div className="mb-3 px-4 md:px-10">
+            <h2 className="text-xl font-bold">Top Reviews</h2>
+            <p className="text-sm text-muted-foreground">
+              See what the community is listening to and logging right now.
+            </p>
+          </div>
           <div className="scrollbar-none flex gap-3 overflow-x-auto px-4 pb-2 md:px-10">
             {reviews.data?.length ? (
               reviews.data.map((r) => (
