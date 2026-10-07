@@ -10,7 +10,7 @@ export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
       { title: "Lyniv — Rate albums by vibe" },
-      { name: "description", content: "Track the albums you love and sort them into four vibe tiers: Holy Grail, Active Rotation, Lofi Beats, Sonic Pollution." },
+      { name: "description", content: "Track the albums you love and sort them into four vibe tiers: Holy Grail, Active Rotation, Lofi Beats, Not my cup of tea." },
       { property: "og:title", content: "Lyniv — Rate albums by vibe" },
       { property: "og:description", content: "Track albums and sort them into four vibe tiers instead of stars." },
     ],
