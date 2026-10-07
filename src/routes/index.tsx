@@ -34,6 +34,30 @@ function Landing() {
   const navigate = useNavigate();
   useEffect(() => { if (session) navigate({ to: "/discover", replace: true }); }, [session, navigate]);
 
+  // Live Spotify metadata for the featured covers; mock albums show instantly as placeholders.
+  const showcaseQuery = useQuery({
+    queryKey: ["landing-showcase"],
+    queryFn: async () =>
+      Promise.all(
+        SHOWCASE.map(async (s) => {
+          try {
+            const results = await musicSource.search(s.query);
+            const exact = results.find(
+              (r) => r.title.toLowerCase().includes(s.mockId.replace(/-/g, " ")) && r.coverUrl,
+            );
+            return exact ?? results.find((r) => r.coverUrl) ?? null;
+          } catch {
+            return null;
+          }
+        }),
+      ),
+    staleTime: 1000 * 60 * 60,
+  });
+
+  const showcaseAlbums = SHOWCASE.map(
+    (s, i) => showcaseQuery.data?.[i] ?? getAlbumSync(s.mockId)!,
+  );
+
   return (
     <div className="bg-hero min-h-screen">
       <header className="flex items-center justify-between px-6 py-5 md:px-12">
