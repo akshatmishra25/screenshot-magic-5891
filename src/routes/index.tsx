@@ -71,10 +71,11 @@ function Landing() {
           <Link to="/auth" className="mt-8 inline-block rounded-full bg-primary px-8 py-4 font-bold text-primary-foreground transition hover:scale-105">Start logging — it's free</Link>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          {SHOWCASE.map((id, i) => {
-            const a = getAlbumSync(id)!;
-            return <div key={id} className={i % 2 ? "translate-y-6" : ""}><AlbumCover album={a} className="shadow-card" /></div>;
-          })}
+          {showcaseAlbums.map((a, i) => (
+            <div key={a.id} className={`transition-opacity duration-500 ${a.coverUrl ? "opacity-100" : "opacity-90"} ${i % 2 ? "translate-y-6" : ""}`}>
+              <AlbumCover album={a} className="shadow-card" />
+            </div>
+          ))}
         </div>
       </section>
       <section className="mx-auto grid max-w-6xl gap-3 px-6 pb-20 sm:grid-cols-2 md:grid-cols-4 md:px-12">
