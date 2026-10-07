@@ -12,8 +12,15 @@ export type ReviewRow = {
 
 const SELECT = "*, profiles(username, display_name, avatar_url)";
 
-export async function recentReviews(limit = 20) {
-  const { data, error } = await supabase.from("reviews").select(SELECT).order("created_at", { ascending: false }).limit(limit);
+export async function recentReviews(limit = 20, excludeUserId?: string | null) {
+  let query = supabase
+    .from("reviews")
+    .select(SELECT)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  // Signed-in users shouldn't see their own reviews in the community feed.
+  if (excludeUserId) query = query.neq("user_id", excludeUserId);
+  const { data, error } = await query;
   if (error) throw error;
   return data as unknown as ReviewRow[];
 }
