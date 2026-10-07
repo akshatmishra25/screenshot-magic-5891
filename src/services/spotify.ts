@@ -25,7 +25,7 @@ export async function searchSpotifyAlbums(query: string) {
   if (!query.trim()) return [];
   const token = await getSpotifyAccessToken();
   const res = await fetch(
-    `https://api.spotify.com/v1/search?type=album&q=${encodeURIComponent(query)}&limit=20`,
+    `https://api.spotify.com/v1/search?type=album&q=${encodeURIComponent(query)}&limit=10`,
     {
       headers: { Authorization: `Bearer ${token}` },
     }
