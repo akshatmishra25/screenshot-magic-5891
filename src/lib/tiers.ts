@@ -19,7 +19,7 @@ export const TIERS: {
     text: "text-tier-rotation", bg: "bg-tier-rotation", border: "border-tier-rotation", soft: "bg-tier-rotation/15" },
   { id: "lofi_beats", name: "Lofi Beats", emoji: "🧹", blurb: "Pleasant background. Forgettable.", icon: Headphones,
     text: "text-tier-lofi", bg: "bg-tier-lofi", border: "border-tier-lofi", soft: "bg-tier-lofi/15" },
-  { id: "sonic_pollution", name: "Sonic Pollution", emoji: "🔇", blurb: "A waste of time. Instant headache.", icon: VolumeX,
+  { id: "sonic_pollution", name: "Not my cup of tea", emoji: "🔇", blurb: "A waste of time. Instant headache.", icon: VolumeX,
     text: "text-tier-pollution", bg: "bg-tier-pollution", border: "border-tier-pollution", soft: "bg-tier-pollution/15" },
 ];
 
