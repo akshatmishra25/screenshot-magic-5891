@@ -1,2 +1,3 @@
 - [x] Add a same-origin Spotify token endpoint with server-side secret handling and expiration-aware caching.
 - [x] Configure the Spotify client credentials after the endpoint is ready.
+- [x] Wire live Spotify data into /discover, /search, and /album/:id via the token proxy (client service, trending, search, album details).

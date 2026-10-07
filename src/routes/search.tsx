@@ -22,7 +22,10 @@ export const Route = createFileRoute("/search")({
 function SearchPage() {
   const { q = "" } = Route.useSearch();
   const navigate = useNavigate({ from: "/search" });
-  const results = useQuery({ queryKey: ["search", q], queryFn: () => musicSource.search(q) });
+  const results = useQuery({
+    queryKey: ["search", q],
+    queryFn: () => (q.trim() ? musicSource.search(q) : musicSource.trending()),
+  });
 
   return (
     <AppShell>
