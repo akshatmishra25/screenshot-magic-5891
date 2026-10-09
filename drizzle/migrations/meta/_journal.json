@@ -15,6 +15,13 @@
       "when": 1791237589268,
       "tag": "0001_restrict_profile_reads_to_signed_in_users",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791584699361,
+      "tag": "0002_add_spotify_account_linking",
+      "breakpoints": true
     }
   ]
 }
