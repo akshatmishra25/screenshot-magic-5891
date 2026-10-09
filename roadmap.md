@@ -1,3 +1,6 @@
 - [x] Add a same-origin Spotify token endpoint with server-side secret handling and expiration-aware caching.
 - [x] Configure the Spotify client credentials after the endpoint is ready.
 - [x] Wire live Spotify data into /discover, /search, and /album/:id via the token proxy (client service, trending, search, album details).
+- [ ] Add secure Spotify account linking with one-time OAuth state, encrypted token storage, and disconnect controls.
+- [ ] Add authenticated Spotify top/recent album recommendations to Discover, excluding albums already reviewed.
+- [ ] Verify the OAuth and recommendation surfaces, metadata, build, and task roadmap.

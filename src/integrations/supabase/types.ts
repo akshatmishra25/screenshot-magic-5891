@@ -79,6 +79,63 @@ export type Database = {
           },
         ]
       }
+      spotify_connections: {
+        Row: {
+          connected_at: string
+          encrypted_tokens: string
+          expires_at: string
+          spotify_display_name: string | null
+          spotify_user_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          connected_at?: string
+          encrypted_tokens: string
+          expires_at: string
+          spotify_display_name?: string | null
+          spotify_user_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          connected_at?: string
+          encrypted_tokens?: string
+          expires_at?: string
+          spotify_display_name?: string | null
+          spotify_user_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      spotify_oauth_states: {
+        Row: {
+          code_verifier: string
+          created_at: string
+          expires_at: string
+          redirect_uri: string
+          state_hash: string
+          user_id: string
+        }
+        Insert: {
+          code_verifier: string
+          created_at?: string
+          expires_at: string
+          redirect_uri: string
+          state_hash: string
+          user_id: string
+        }
+        Update: {
+          code_verifier?: string
+          created_at?: string
+          expires_at?: string
+          redirect_uri?: string
+          state_hash?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
