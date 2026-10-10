@@ -16,6 +16,7 @@ import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as SearchRouteImport } from './routes/search'
 import { Route as AlbumIdRouteImport } from './routes/album.$id'
 import { Route as AuthenticatedUUsernameRouteImport } from './routes/_authenticated/u.$username'
+import { Route as ApiPublicSpotifyCallbackRouteImport } from './routes/api/public/spotify-callback'
 import { Route as ApiPublicSpotifyTokenRouteImport } from './routes/api/public/spotify-token'
 
 const IndexRoute = IndexRouteImport.update({
@@ -52,6 +53,12 @@ const AuthenticatedUUsernameRoute = AuthenticatedUUsernameRouteImport.update({
   path: '/u/$username',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ApiPublicSpotifyCallbackRoute =
+  ApiPublicSpotifyCallbackRouteImport.update({
+    id: '/api/public/spotify-callback',
+    path: '/api/public/spotify-callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicSpotifyTokenRoute = ApiPublicSpotifyTokenRouteImport.update({
   id: '/api/public/spotify-token',
   path: '/api/public/spotify-token',
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof SearchRoute
   '/album/$id': typeof AlbumIdRoute
   '/u/$username': typeof AuthenticatedUUsernameRoute
+  '/api/public/spotify-callback': typeof ApiPublicSpotifyCallbackRoute
   '/api/public/spotify-token': typeof ApiPublicSpotifyTokenRoute
 }
 export interface FileRoutesByTo {
@@ -74,6 +82,7 @@ export interface FileRoutesByTo {
   '/search': typeof SearchRoute
   '/album/$id': typeof AlbumIdRoute
   '/u/$username': typeof AuthenticatedUUsernameRoute
+  '/api/public/spotify-callback': typeof ApiPublicSpotifyCallbackRoute
   '/api/public/spotify-token': typeof ApiPublicSpotifyTokenRoute
 }
 export interface FileRoutesById {
@@ -85,6 +94,7 @@ export interface FileRoutesById {
   '/search': typeof SearchRoute
   '/album/$id': typeof AlbumIdRoute
   '/_authenticated/u/$username': typeof AuthenticatedUUsernameRoute
+  '/api/public/spotify-callback': typeof ApiPublicSpotifyCallbackRoute
   '/api/public/spotify-token': typeof ApiPublicSpotifyTokenRoute
 }
 export interface FileRouteTypes {
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/album/$id'
     | '/u/$username'
+    | '/api/public/spotify-callback'
     | '/api/public/spotify-token'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/album/$id'
     | '/u/$username'
+    | '/api/public/spotify-callback'
     | '/api/public/spotify-token'
   id:
     | '__root__'
@@ -115,6 +127,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/album/$id'
     | '/_authenticated/u/$username'
+    | '/api/public/spotify-callback'
     | '/api/public/spotify-token'
   fileRoutesById: FileRoutesById
 }
@@ -125,6 +138,7 @@ export interface RootRouteChildren {
   DiscoverRoute: typeof DiscoverRoute
   SearchRoute: typeof SearchRoute
   AlbumIdRoute: typeof AlbumIdRoute
+  ApiPublicSpotifyCallbackRoute: typeof ApiPublicSpotifyCallbackRoute
   ApiPublicSpotifyTokenRoute: typeof ApiPublicSpotifyTokenRoute
 }
 
@@ -179,6 +193,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUUsernameRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/api/public/spotify-callback': {
+      id: '/api/public/spotify-callback'
+      path: '/api/public/spotify-callback'
+      fullPath: '/api/public/spotify-callback'
+      preLoaderRoute: typeof ApiPublicSpotifyCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/spotify-token': {
       id: '/api/public/spotify-token'
       path: '/api/public/spotify-token'
@@ -207,6 +228,7 @@ const rootRouteChildren: RootRouteChildren = {
   DiscoverRoute: DiscoverRoute,
   SearchRoute: SearchRoute,
   AlbumIdRoute: AlbumIdRoute,
+  ApiPublicSpotifyCallbackRoute: ApiPublicSpotifyCallbackRoute,
   ApiPublicSpotifyTokenRoute: ApiPublicSpotifyTokenRoute,
 }
 export const routeTree = rootRouteImport

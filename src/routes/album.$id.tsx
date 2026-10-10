@@ -20,6 +20,8 @@ export const Route = createFileRoute("/album/$id")({
       { name: "description", content: "Tracklist, vibe tiers and reviews for this album on Lyniv." },
       { property: "og:title", content: "Album — Lyniv" },
       { property: "og:description", content: "Tracklist, vibe tiers and reviews for this album on Lyniv." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: AlbumPage,

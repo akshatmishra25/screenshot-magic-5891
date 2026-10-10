@@ -10,3 +10,4 @@
 <!-- LOVABLE:END -->
 
 - Keep Spotify credential exchange in a same-origin TanStack server route, rather than creating a Supabase Edge Function, because this app already provides the serverless request layer.
+- Keep Spotify account-linking callbacks in same-origin TanStack server routes and all user Spotify tokens encrypted at rest; only authenticated server functions may read or refresh them, so credentials and private listening data never enter public client responses.

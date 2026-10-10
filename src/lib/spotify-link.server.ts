@@ -113,6 +113,7 @@ export async function beginSpotifyAuthorization(
   const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await supabaseAdmin.from("spotify_oauth_states").delete().lt("expires_at", new Date().toISOString());
   const { error } = await supabaseAdmin.from("spotify_oauth_states").insert({
     state_hash: stateHash,
     user_id: userId,
@@ -252,8 +253,11 @@ export async function getSpotifyConnectionStatus(userId: string) {
 
 export async function disconnectSpotifyAccount(userId: string): Promise<void> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin.from("spotify_connections").delete().eq("user_id", userId);
-  if (error) throw new Error("Could not disconnect Spotify");
+  const [connection, pendingStates] = await Promise.all([
+    supabaseAdmin.from("spotify_connections").delete().eq("user_id", userId),
+    supabaseAdmin.from("spotify_oauth_states").delete().eq("user_id", userId),
+  ]);
+  if (connection.error || pendingStates.error) throw new Error("Could not disconnect Spotify");
 }
 
 async function refreshSpotifyTokens(
