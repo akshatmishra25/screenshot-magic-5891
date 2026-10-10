@@ -14,6 +14,8 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Track the albums you love and sort them into four vibe tiers: Holy Grail, Active Rotation, Lofi Beats, Not my cup of tea." },
       { property: "og:title", content: "Lyniv — Rate albums by vibe" },
       { property: "og:description", content: "Track albums and sort them into four vibe tiers instead of stars." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Landing,

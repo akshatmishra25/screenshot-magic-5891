@@ -12,6 +12,8 @@ export const Route = createFileRoute("/auth")({
       { name: "description", content: "Sign in or create your Lyniv account to start rating albums." },
       { property: "og:title", content: "Sign in — Lyniv" },
       { property: "og:description", content: "Sign in or create your Lyniv account to start rating albums." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: AuthPage,

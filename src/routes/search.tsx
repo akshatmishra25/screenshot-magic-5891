@@ -14,6 +14,8 @@ export const Route = createFileRoute("/search")({
       { name: "description", content: "Find any album and drop it into a vibe tier." },
       { property: "og:title", content: "Search albums — Lyniv" },
       { property: "og:description", content: "Find any album and drop it into a vibe tier." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: SearchPage,

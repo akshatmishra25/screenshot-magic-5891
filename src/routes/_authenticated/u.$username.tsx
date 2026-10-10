@@ -1,5 +1,6 @@
 import { createFileRoute, useSearch } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient, useServerFn } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,6 +20,8 @@ export const Route = createFileRoute("/_authenticated/u/$username")({
       { name: "description", content: `Albums logged by @${params.username}, sorted into four vibe tiers.` },
       { property: "og:title", content: `@${params.username} — Lyniv` },
       { property: "og:description", content: `Albums logged by @${params.username}, sorted into four vibe tiers.` },
+      { property: "og:type", content: "profile" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: ProfilePage,
