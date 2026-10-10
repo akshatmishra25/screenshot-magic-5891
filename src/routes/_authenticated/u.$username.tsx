@@ -1,4 +1,4 @@
-import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
@@ -52,7 +52,6 @@ function ReviewAlbumCard({ review }: { review: ReviewRow }) {
 
 function ProfilePage() {
   const { username } = Route.useParams();
-  const search = useSearch({ strict: false });
   const { session } = useAuth();
   const profile = useQuery({
     queryKey: ["profile", username],
@@ -67,7 +66,7 @@ function ProfilePage() {
   const [editing, setEditing] = useState(false);
 
   useEffect(() => {
-    const status = typeof search.spotify === "string" ? search.spotify : null;
+    const status = new URLSearchParams(window.location.search).get("spotify");
     if (status === "connected") toast.success("Spotify account linked");
     if (status === "cancelled") toast.message("Spotify linking was cancelled");
     if (status === "expired") toast.error("That Spotify link expired. Please try again.");
@@ -77,7 +76,7 @@ function ProfilePage() {
       cleanUrl.searchParams.delete("spotify");
       window.history.replaceState(window.history.state, "", cleanUrl);
     }
-  }, [search.spotify]);
+  }, []);
 
   if (profile.isLoading) return <div className="p-10 text-muted-foreground">Loading…</div>;
   if (!p) return <div className="p-10">User not found.</div>;
