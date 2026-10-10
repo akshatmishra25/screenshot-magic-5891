@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { createFileRoute, useSearch } from "@tanstack/react-router";
+import { useMutation, useQuery, useQueryClient, useServerFn } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
@@ -8,6 +8,8 @@ import { userReviews, type ReviewRow } from "@/lib/reviews";
 import { musicSource, getAlbumSync } from "@/lib/albums";
 import { TIERS, type TierId } from "@/lib/tiers";
 import { AlbumCard } from "@/components/AlbumCard";
+import { Button } from "@/components/ui/button";
+import { disconnectSpotifyLink, getSpotifyLinkStatus, startSpotifyLink } from "@/lib/spotify-link.functions";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/u/$username")({
@@ -47,6 +49,7 @@ function ReviewAlbumCard({ review }: { review: ReviewRow }) {
 
 function ProfilePage() {
   const { username } = Route.useParams();
+  const search = useSearch({ strict: false });
   const { session } = useAuth();
   const profile = useQuery({
     queryKey: ["profile", username],
@@ -59,6 +62,19 @@ function ProfilePage() {
   const reviews = useQuery({ queryKey: ["reviews", "user", p?.id], enabled: !!p, queryFn: () => userReviews(p!.id) });
   const [tab, setTab] = useState<TierId>("holy_grail");
   const [editing, setEditing] = useState(false);
+
+  useEffect(() => {
+    const status = typeof search.spotify === "string" ? search.spotify : null;
+    if (status === "connected") toast.success("Spotify account linked");
+    if (status === "cancelled") toast.message("Spotify linking was cancelled");
+    if (status === "expired") toast.error("That Spotify link expired. Please try again.");
+    if (status === "error") toast.error("Spotify couldn't be linked. Please try again.");
+    if (status) {
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete("spotify");
+      window.history.replaceState(window.history.state, "", cleanUrl);
+    }
+  }, [search.spotify]);
 
   if (profile.isLoading) return <div className="p-10 text-muted-foreground">Loading…</div>;
   if (!p) return <div className="p-10">User not found.</div>;
@@ -191,6 +207,7 @@ function EditProfile({
         maxLength={160}
         rows={2}
       />
+      <SpotifyConnectionControl />
       <button
         disabled={save.isPending}
         className="rounded-full bg-primary py-2 text-sm font-bold text-primary-foreground disabled:opacity-50"
@@ -198,5 +215,66 @@ function EditProfile({
         Save
       </button>
     </form>
+  );
+}
+
+function SpotifyConnectionControl() {
+  const queryClient = useQueryClient();
+  const startLink = useServerFn(startSpotifyLink);
+  const disconnect = useServerFn(disconnectSpotifyLink);
+  const { data: connection, isLoading } = useQuery({
+    queryKey: ["spotify-connection"],
+    queryFn: () => getSpotifyLinkStatus(),
+  });
+  const [linking, setLinking] = useState(false);
+  const removeLink = useMutation({
+    mutationFn: () => disconnect(),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["spotify-connection"] });
+      await queryClient.invalidateQueries({ queryKey: ["spotify-recommendations"] });
+      toast.success("Spotify disconnected");
+    },
+    onError: () => toast.error("Could not disconnect Spotify. Please try again."),
+  });
+
+  const connect = async () => {
+    setLinking(true);
+    try {
+      const { authorizationUrl } = await startLink();
+      window.location.assign(authorizationUrl);
+    } catch {
+      setLinking(false);
+      toast.error("Could not start Spotify linking. Please try again.");
+    }
+  };
+
+  return (
+    <section className="grid gap-2 border-t border-border pt-4">
+      <div>
+        <h3 className="text-sm font-bold">Spotify listening</h3>
+        {connection?.connected ? (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Connected{connection.displayName ? ` as ${connection.displayName}` : ""}. Listening suggestions appear in Discover.
+          </p>
+        ) : (
+          <p className="mt-1 text-xs text-muted-foreground">Connect to find albums from your top and recent listening.</p>
+        )}
+      </div>
+      {connection?.connected ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-fit"
+          disabled={removeLink.isPending}
+          onClick={() => removeLink.mutate()}
+        >
+          {removeLink.isPending ? "Disconnecting…" : "Disconnect Spotify"}
+        </Button>
+      ) : (
+        <Button type="button" className="w-fit" disabled={isLoading || linking} onClick={connect}>
+          {linking ? "Opening Spotify…" : "Connect Spotify"}
+        </Button>
+      )}
+    </section>
   );
 }
