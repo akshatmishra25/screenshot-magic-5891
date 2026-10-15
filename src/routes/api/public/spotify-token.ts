@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { isAllowedSameOrigin } from "@/lib/server-origin";
 
 type SpotifyTokenPayload = {
   access_token?: unknown;
@@ -20,8 +21,7 @@ export const Route = createFileRoute("/api/public/spotify-token")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const origin = request.headers.get("origin");
-        if (!origin || origin !== new URL(request.url).origin) {
+        if (!isAllowedSameOrigin(request)) {
           return Response.json({ error: "Same-origin requests only" }, { status: 403, headers: noStoreHeaders });
         }
 

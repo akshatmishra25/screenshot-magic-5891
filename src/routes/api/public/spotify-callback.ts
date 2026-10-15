@@ -10,7 +10,10 @@ export const Route = createFileRoute("/api/public/spotify-callback")({
         const url = new URL(request.url);
         const clientId = process.env["SPOTIFY_CLIENT_ID"];
         const clientSecret = process.env["SPOTIFY_CLIENT_SECRET"];
-        const tokenEncryptionKey = process.env["SPOTIFY_TOKEN_ENCRYPTION_KEY"];
+        const tokenEncryptionKey =
+          process.env["SPOTIFY_TOKEN_ENCRYPTION_KEY"] ||
+          process.env["SUPABASE_SERVICE_ROLE_KEY"] ||
+          clientSecret;
         if (!clientId || !clientSecret || !tokenEncryptionKey) {
           return new Response("Spotify linking is not configured", { status: 503, headers: noStoreHeaders });
         }

@@ -36,8 +36,16 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+function base64UrlToBase64(base64url: string): string {
+  let base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+  while (base64.length % 4 !== 0) {
+    base64 += "=";
+  }
+  return base64;
+}
+
 function base64ToBytes(value: string): Uint8Array<ArrayBuffer> {
-  const binary = atob(value);
+  const binary = atob(base64UrlToBase64(value));
   const bytes = new Uint8Array(binary.length);
   for (let index = 0; index < binary.length; index += 1) {
     bytes[index] = binary.charCodeAt(index);
@@ -121,7 +129,10 @@ export async function beginSpotifyAuthorization(
     redirect_uri: redirectUri,
     expires_at: expiresAt,
   });
-  if (error) throw new Error("Could not start Spotify linking");
+  if (error) {
+    console.error("Could not start Spotify linking, database error:", error);
+    throw new Error(`Could not start Spotify linking: ${error.message}`);
+  }
 
   const challenge = await digestBase64Url(verifier);
   const url = new URL("https://accounts.spotify.com/authorize");
@@ -129,7 +140,7 @@ export async function beginSpotifyAuthorization(
     response_type: "code",
     client_id: clientId,
     redirect_uri: redirectUri,
-    scope: "user-top-read user-read-recently-played user-read-private",
+    scope: "user-top-read user-read-recently-played user-library-read user-read-private",
     state,
     code_challenge_method: "S256",
     code_challenge: challenge,
@@ -169,7 +180,10 @@ export async function completeSpotifyAuthorization(input: {
     .eq("state_hash", stateHash)
     .select("user_id, code_verifier, redirect_uri, expires_at")
     .maybeSingle();
-  if (error || !data) return { redirectTo: null };
+  if (error || !data) {
+    if (error) console.error("Could not find or delete spotify_oauth_states:", error);
+    return { redirectTo: null };
+  }
 
   const oauthState = data as OAuthState;
   if (new Date(oauthState.expires_at).getTime() <= Date.now()) {
@@ -179,6 +193,7 @@ export async function completeSpotifyAuthorization(input: {
 
   const username = await getProfileUsername(oauthState.user_id);
   if (input.providerError || !input.code) {
+    if (input.providerError) console.error("Spotify returned provider error:", input.providerError);
     return { redirectTo: profileRedirect(oauthState.redirect_uri, username, "cancelled") };
   }
 
@@ -196,7 +211,11 @@ export async function completeSpotifyAuthorization(input: {
         code_verifier: oauthState.code_verifier,
       }),
     });
-    if (!tokenResponse.ok) return { redirectTo: profileRedirect(oauthState.redirect_uri, username, "error") };
+    if (!tokenResponse.ok) {
+      const errBody = await tokenResponse.text();
+      console.error("Spotify token exchange failed:", tokenResponse.status, errBody);
+      return { redirectTo: profileRedirect(oauthState.redirect_uri, username, "error") };
+    }
 
     const tokenPayload = (await tokenResponse.json()) as SpotifyTokenResponse;
     if (
@@ -204,15 +223,21 @@ export async function completeSpotifyAuthorization(input: {
       typeof tokenPayload.refresh_token !== "string" ||
       typeof tokenPayload.expires_in !== "number"
     ) {
+      console.error("Spotify token response missing tokens:", tokenPayload);
       return { redirectTo: profileRedirect(oauthState.redirect_uri, username, "error") };
     }
 
     const meResponse = await fetch("https://api.spotify.com/v1/me", {
       headers: { Authorization: `Bearer ${tokenPayload.access_token}` },
     });
-    if (!meResponse.ok) return { redirectTo: profileRedirect(oauthState.redirect_uri, username, "error") };
+    if (!meResponse.ok) {
+      const errBody = await meResponse.text();
+      console.error("Spotify /v1/me failed:", meResponse.status, errBody);
+      return { redirectTo: profileRedirect(oauthState.redirect_uri, username, "error") };
+    }
     const spotifyProfile = (await meResponse.json()) as { id?: unknown; display_name?: unknown };
     if (typeof spotifyProfile.id !== "string") {
+      console.error("Spotify profile missing id:", spotifyProfile);
       return { redirectTo: profileRedirect(oauthState.redirect_uri, username, "error") };
     }
 
@@ -232,10 +257,14 @@ export async function completeSpotifyAuthorization(input: {
       expires_at: expiresAt,
       updated_at: new Date().toISOString(),
     });
-    if (saveError) return { redirectTo: profileRedirect(oauthState.redirect_uri, username, "error") };
+    if (saveError) {
+      console.error("Failed to save spotify_connections:", saveError);
+      return { redirectTo: profileRedirect(oauthState.redirect_uri, username, "error") };
+    }
 
     return { redirectTo: profileRedirect(oauthState.redirect_uri, username, "connected") };
-  } catch {
+  } catch (err) {
+    console.error("Spotify authorization unexpected error:", err);
     return { redirectTo: profileRedirect(oauthState.redirect_uri, username, "error") };
   }
 }
@@ -288,40 +317,68 @@ async function refreshSpotifyTokens(
 
 async function tracksFromSpotify(url: string, accessToken: string): Promise<unknown[]> {
   const response = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
-  if (!response.ok) throw new Error("Spotify listening data is unavailable");
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.error(`Spotify fetch error for ${url}: status ${response.status}`, errorBody);
+    throw new Error(`Spotify listening data is unavailable: ${response.status}`);
+  }
   const page = (await response.json()) as { items?: unknown[] };
   return Array.isArray(page.items) ? page.items : [];
 }
 
-function albumFromTrackPage(items: unknown[], recent: boolean): SpotifyAlbumDto[] {
-  const albums: SpotifyAlbumDto[] = [];
+type ParsedSpotifyAlbum = SpotifyAlbumDto & { isFullAlbum: boolean };
+
+function parseSpotifyAlbumObject(album: unknown): ParsedSpotifyAlbum | null {
+  if (!album || typeof album !== "object") return null;
+  const raw = album as {
+    id?: unknown;
+    name?: unknown;
+    release_date?: unknown;
+    album_type?: unknown;
+    total_tracks?: unknown;
+    artists?: Array<{ name?: unknown }>;
+    images?: Array<{ url?: unknown }>;
+  };
+  if (typeof raw.id !== "string" || typeof raw.name !== "string") return null;
+  const cover = raw.images?.find((image) => typeof image.url === "string")?.url || raw.images?.[0]?.url;
+  const artist = raw.artists?.map((entry) => entry.name).filter((name): name is string => typeof name === "string").join(", ");
+  const year = typeof raw.release_date === "string" ? Number.parseInt(raw.release_date.slice(0, 4), 10) : NaN;
+  const isFullAlbum =
+    raw.album_type === "album" ||
+    raw.album_type === "compilation" ||
+    (typeof raw.total_tracks === "number" && raw.total_tracks > 2);
+
+  return {
+    id: raw.id,
+    title: raw.name,
+    artist: artist || "Unknown Artist",
+    year: Number.isFinite(year) ? year : new Date().getUTCFullYear(),
+    genre: "Pop",
+    coverUrl: typeof cover === "string" ? cover : "",
+    hues: [220, 260],
+    tracks: [],
+    isFullAlbum,
+  };
+}
+
+function albumFromTrackPage(items: unknown[], recent: boolean): ParsedSpotifyAlbum[] {
+  const albums: ParsedSpotifyAlbum[] = [];
   for (const item of items) {
     if (!item || typeof item !== "object") continue;
     const track = recent ? (item as { track?: unknown }).track : item;
     if (!track || typeof track !== "object") continue;
-    const album = (track as { album?: unknown }).album;
-    if (!album || typeof album !== "object") continue;
-    const raw = album as {
-      id?: unknown;
-      name?: unknown;
-      release_date?: unknown;
-      artists?: Array<{ name?: unknown }>;
-      images?: Array<{ url?: unknown }>;
-    };
-    if (typeof raw.id !== "string" || typeof raw.name !== "string") continue;
-    const cover = raw.images?.find((image) => typeof image.url === "string")?.url;
-    const artist = raw.artists?.map((entry) => entry.name).filter((name): name is string => typeof name === "string").join(", ");
-    const year = typeof raw.release_date === "string" ? Number.parseInt(raw.release_date.slice(0, 4), 10) : NaN;
-    albums.push({
-      id: raw.id,
-      title: raw.name,
-      artist: artist || "Unknown Artist",
-      year: Number.isFinite(year) ? year : new Date().getUTCFullYear(),
-      genre: "Pop",
-      coverUrl: typeof cover === "string" ? cover : "",
-      hues: [220, 260],
-      tracks: [],
-    });
+    const parsed = parseSpotifyAlbumObject((track as { album?: unknown }).album);
+    if (parsed) albums.push(parsed);
+  }
+  return albums;
+}
+
+function albumsFromSavedAlbumsPage(items: unknown[]): ParsedSpotifyAlbum[] {
+  const albums: ParsedSpotifyAlbum[] = [];
+  for (const item of items) {
+    if (!item || typeof item !== "object") continue;
+    const parsed = parseSpotifyAlbumObject((item as { album?: unknown }).album);
+    if (parsed) albums.push(parsed);
   }
   return albums;
 }
@@ -331,47 +388,100 @@ export async function getUnreviewedSpotifyAlbums(input: {
   clientId: string;
   clientSecret: string;
   tokenEncryptionKey: string;
-}): Promise<{ connected: boolean; albums: SpotifyAlbumDto[] }> {
+}): Promise<{ connected: boolean; albums: SpotifyAlbumDto[]; totalFound: number }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: connection, error } = await supabaseAdmin
     .from("spotify_connections")
     .select("encrypted_tokens, expires_at")
     .eq("user_id", input.userId)
     .maybeSingle();
-  if (error) throw new Error("Could not read Spotify connection");
-  if (!connection) return { connected: false, albums: [] };
+  if (error) {
+    console.error("Could not read Spotify connection:", error);
+    throw new Error("Could not read Spotify connection");
+  }
+  if (!connection) return { connected: false, albums: [], totalFound: 0 };
 
-  let tokens = await decryptSpotifyTokens(connection.encrypted_tokens, input.tokenEncryptionKey);
-  if (new Date(connection.expires_at).getTime() <= Date.now() + 60_000) {
-    tokens = await refreshSpotifyTokens(tokens, input.clientId, input.clientSecret);
-    const encryptedTokens = await encryptSpotifyTokens(tokens, input.tokenEncryptionKey);
-    const { error: updateError } = await supabaseAdmin.from("spotify_connections").update({
-      encrypted_tokens: encryptedTokens,
-      expires_at: new Date(Date.now() + tokens.expiresIn * 1000).toISOString(),
-      updated_at: new Date().toISOString(),
-    }).eq("user_id", input.userId);
-    if (updateError) throw new Error("Could not refresh Spotify connection");
+  let tokens: SpotifyTokens;
+  try {
+    tokens = await decryptSpotifyTokens(connection.encrypted_tokens, input.tokenEncryptionKey);
+  } catch (err) {
+    console.error("Could not decrypt Spotify tokens:", err);
+    throw new Error("Stored Spotify connection is invalid. Please reconnect Spotify.");
   }
 
-  const [topResult, recentResult] = await Promise.allSettled([
+  // Refresh token if close to expiry
+  if (new Date(connection.expires_at).getTime() <= Date.now() + 60_000) {
+    try {
+      tokens = await refreshSpotifyTokens(tokens, input.clientId, input.clientSecret);
+      const encryptedTokens = await encryptSpotifyTokens(tokens, input.tokenEncryptionKey);
+      await supabaseAdmin.from("spotify_connections").update({
+        encrypted_tokens: encryptedTokens,
+        expires_at: new Date(Date.now() + tokens.expiresIn * 1000).toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq("user_id", input.userId);
+    } catch (refreshErr) {
+      console.error("Could not refresh Spotify tokens:", refreshErr);
+      throw new Error("Spotify connection expired. Please reconnect.");
+    }
+  }
+
+  // Query saved library albums, short-term top tracks, medium-term top tracks, and recently played
+  const [savedResult, shortTopResult, mediumTopResult, recentResult] = await Promise.allSettled([
+    tracksFromSpotify("https://api.spotify.com/v1/me/albums?limit=50", tokens.accessToken),
+    tracksFromSpotify("https://api.spotify.com/v1/me/top/tracks?time_range=short_term&limit=50", tokens.accessToken),
     tracksFromSpotify("https://api.spotify.com/v1/me/top/tracks?time_range=medium_term&limit=50", tokens.accessToken),
     tracksFromSpotify("https://api.spotify.com/v1/me/player/recently-played?limit=50", tokens.accessToken),
   ]);
-  if (topResult.status === "rejected" && recentResult.status === "rejected") {
+
+  const allFailed =
+    savedResult.status === "rejected" &&
+    shortTopResult.status === "rejected" &&
+    mediumTopResult.status === "rejected" &&
+    recentResult.status === "rejected";
+
+  if (allFailed) {
+    console.error("All Spotify listening endpoints failed", {
+      saved: savedResult.reason,
+      shortTop: shortTopResult.reason,
+      mediumTop: mediumTopResult.reason,
+      recent: recentResult.reason,
+    });
     throw new Error("Spotify listening data is unavailable");
   }
-  const items = [
-    ...(topResult.status === "fulfilled" ? albumFromTrackPage(topResult.value, false) : []),
+
+  const rawItems: ParsedSpotifyAlbum[] = [
+    ...(savedResult.status === "fulfilled" ? albumsFromSavedAlbumsPage(savedResult.value) : []),
+    ...(shortTopResult.status === "fulfilled" ? albumFromTrackPage(shortTopResult.value, false) : []),
+    ...(mediumTopResult.status === "fulfilled" ? albumFromTrackPage(mediumTopResult.value, false) : []),
     ...(recentResult.status === "fulfilled" ? albumFromTrackPage(recentResult.value, true) : []),
   ];
+
   const reviewedResult = await supabaseAdmin.from("reviews").select("album_id").eq("user_id", input.userId);
-  if (reviewedResult.error) throw new Error("Could not load your album reviews");
+  if (reviewedResult.error) {
+    console.error("Could not load user reviews:", reviewedResult.error);
+    throw new Error("Could not load your album reviews");
+  }
+
   const reviewedIds = new Set(reviewedResult.data.map((review) => review.album_id));
   const seen = new Set<string>();
-  const albums = items.filter((album) => {
-    if (seen.has(album.id) || reviewedIds.has(album.id)) return false;
-    seen.add(album.id);
-    return true;
-  }).slice(0, 12);
-  return { connected: true, albums };
+
+  // Prioritize full albums first, then fill with singles if needed
+  const fullAlbums: SpotifyAlbumDto[] = [];
+  const singles: SpotifyAlbumDto[] = [];
+
+  for (const item of rawItems) {
+    if (seen.has(item.id) || reviewedIds.has(item.id)) continue;
+    seen.add(item.id);
+
+    const { isFullAlbum, ...dto } = item;
+    if (isFullAlbum) {
+      fullAlbums.push(dto);
+    } else {
+      singles.push(dto);
+    }
+  }
+
+  const albums = [...fullAlbums, ...singles].slice(0, 12);
+
+  return { connected: true, albums, totalFound: rawItems.length };
 }

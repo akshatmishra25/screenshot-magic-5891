@@ -37,8 +37,8 @@ function Discover() {
     queryKey: ["spotify-recommendations", userId],
     queryFn: () => fetchRecommendations({ data: {} }),
     enabled: Boolean(userId) && !authLoading,
-    staleTime: 1000 * 60 * 5,
-    retry: false,
+    staleTime: 1000 * 30,
+    retry: 1,
   });
   const reviews = useQuery({
     queryKey: ["reviews", "recent", userId ?? "guest"],
@@ -82,7 +82,17 @@ function Discover() {
                 <p className="text-sm text-muted-foreground">Albums from your top and recent listening that you haven’t reviewed.</p>
               </div>
               {recommendations.data?.connected && (
-                <span className="text-xs font-semibold text-muted-foreground">Based on your listening</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-muted-foreground">Based on your listening</span>
+                  <button
+                    type="button"
+                    onClick={() => recommendations.refetch()}
+                    disabled={recommendations.isFetching}
+                    className="text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+                  >
+                    {recommendations.isFetching ? "Refreshing…" : "Refresh"}
+                  </button>
+                </div>
               )}
             </div>
             {!recommendations.isLoading && !recommendations.isError && !recommendations.data?.connected && (
@@ -99,7 +109,16 @@ function Discover() {
               <p className="px-4 text-sm text-muted-foreground md:px-10">Checking your listening…</p>
             )}
             {recommendations.isError && (
-              <p className="px-4 text-sm text-muted-foreground md:px-10">Your Spotify listening is temporarily unavailable.</p>
+              <div className="flex flex-wrap items-center gap-3 px-4 md:px-10">
+                <p className="text-sm text-muted-foreground">Your Spotify listening is temporarily unavailable.</p>
+                <button
+                  type="button"
+                  onClick={() => recommendations.refetch()}
+                  className="rounded-full border border-border px-3 py-1 text-xs font-medium hover:bg-muted"
+                >
+                  Retry
+                </button>
+              </div>
             )}
             {recommendations.data?.connected && recommendations.data.albums.length > 0 && (
               <div className="scrollbar-none flex gap-3 overflow-x-auto px-4 pb-2 md:px-10">
@@ -109,7 +128,11 @@ function Discover() {
               </div>
             )}
             {recommendations.data?.connected && recommendations.data.albums.length === 0 && (
-              <p className="px-4 text-sm text-muted-foreground md:px-10">You’ve reviewed everything in this listening mix.</p>
+              <p className="px-4 text-sm text-muted-foreground md:px-10">
+                {recommendations.data.totalFound === 0
+                  ? "No recent listening found on your Spotify account yet. Play a song or album on Spotify, then click Refresh!"
+                  : "You’ve reviewed everything in this listening mix."}
+              </p>
             )}
           </section>
         )}
