@@ -3,12 +3,15 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { Share2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { userReviews, type ReviewRow } from "@/lib/reviews";
-import { musicSource, getAlbumSync } from "@/lib/albums";
+import { musicSource, getAlbumSync, type Album } from "@/lib/albums";
 import { TIERS, type TierId } from "@/lib/tiers";
 import { AlbumCard } from "@/components/AlbumCard";
+import { ShareReviewDialog } from "@/components/ShareReviewDialog";
+import type { ShareCardData } from "@/lib/share-card";
 import { disconnectSpotifyLink, getSpotifyLinkStatus, startSpotifyLink } from "@/lib/spotify-link.functions";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +29,7 @@ export const Route = createFileRoute("/_authenticated/u/$username")({
   component: ProfilePage,
 });
 
-function ReviewAlbumCard({ review }: { review: ReviewRow }) {
+function ReviewAlbumCard({ review, onShare }: { review: ReviewRow; onShare?: ((review: ReviewRow, album: Album) => void) | undefined }) {
   const { data: album, isLoading } = useQuery({
     queryKey: ["album", review.album_id],
     queryFn: async () => {
@@ -46,7 +49,25 @@ function ReviewAlbumCard({ review }: { review: ReviewRow }) {
 
   if (!album) return null;
 
-  return <AlbumCard album={album} />;
+  return (
+    <div className="group relative">
+      <AlbumCard album={album} />
+      {onShare && (
+        <button
+          type="button"
+          aria-label={`Share review of ${album.title}`}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onShare(review, album);
+          }}
+          className="absolute right-2 top-2 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-background/80 text-foreground opacity-0 shadow-card backdrop-blur transition-all hover:scale-110 hover:text-primary focus-visible:opacity-100 group-hover:opacity-100 sm:opacity-0"
+        >
+          <Share2 className="h-4 w-4" />
+        </button>
+      )}
+    </div>
+  );
 }
 
 function ProfilePage() {
@@ -71,6 +92,7 @@ function ProfilePage() {
   const reviews = useQuery({ queryKey: ["reviews", "user", p?.id], enabled: !!p, queryFn: () => userReviews(p!.id) });
   const [tab, setTab] = useState<TierId>("holy_grail");
   const [editing, setEditing] = useState(false);
+  const [shareData, setShareData] = useState<ShareCardData | null>(null);
 
   useEffect(() => {
     const status = new URLSearchParams(window.location.search).get("spotify");
@@ -155,7 +177,23 @@ function ProfilePage() {
 
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {activeList.map((r) => (
-            <ReviewAlbumCard key={r.id} review={r} />
+            <ReviewAlbumCard
+              key={r.id}
+              review={r}
+              onShare={
+                isMe
+                  ? (review, album) => {
+                      if (!p) return;
+                      setShareData({
+                        album,
+                        tier: review.tier,
+                        body: review.body,
+                        profile: { profile_name: p.display_name, username: p.username, avatar_url: p.avatar_url },
+                      });
+                    }
+                  : undefined
+              }
+            />
           ))}
         </div>
 
@@ -163,6 +201,8 @@ function ProfilePage() {
           <p className="mt-6 text-sm text-muted-foreground">Nothing in this tier yet.</p>
         )}
       </div>
+
+      <ShareReviewDialog open={shareData !== null} onOpenChange={(o) => { if (!o) setShareData(null); }} data={shareData} />
     </div>
   );
 }
@@ -249,7 +289,7 @@ function SpotifyProfileBadge({
   connection,
   isLoading,
 }: {
-  connection?: { connected: boolean; displayName?: string | null };
+  connection?: { connected: boolean; displayName?: string | null } | undefined;
   isLoading: boolean;
 }) {
   const queryClient = useQueryClient();
