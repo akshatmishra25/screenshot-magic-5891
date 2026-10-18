@@ -138,7 +138,8 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   // Tier chip
   ctx.font = "800 30px Manrope, sans-serif";
   const chipLabel = `${tier.emoji}  ${tier.name.toUpperCase()}`;
-  const chipW = ctx.measureText(chipLabel).width + 64;
+  // Emoji and bold fallback fonts render wider than measureText reports, so pad generously
+  const chipW = Math.max(ctx.measureText(chipLabel).width * 1.08, 200) + 96;
   const chipH = 58;
   ctx.fillStyle = accent;
   ctx.save();
