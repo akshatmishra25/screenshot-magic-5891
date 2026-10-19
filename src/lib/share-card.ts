@@ -148,6 +148,7 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   ctx.fill();
   ctx.restore();
   ctx.fillStyle = accent;
+  ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.fillText(chipLabel, W / 2, y - 40 + chipH / 2 + 1);
   ctx.textBaseline = "alphabetic";
