@@ -12,6 +12,8 @@ import { AlbumCover } from "@/components/AlbumCover";
 import { ReviewCard } from "@/components/ReviewCard";
 import { AppShell } from "@/components/AppShell";
 import { cn } from "@/lib/utils";
+import { ShareReviewDialog } from "@/components/ShareReviewDialog";
+import type { ShareCardData } from "@/lib/share-card";
 
 export const Route = createFileRoute("/album/$id")({
   head: () => ({
@@ -29,6 +31,7 @@ export const Route = createFileRoute("/album/$id")({
 
 function AlbumPage() {
   const { id } = Route.useParams();
+  const [shareData, setShareData] = useState<ShareCardData | null>(null);
   const album = useQuery({ queryKey: ["album", id], queryFn: () => musicSource.getAlbum(id) });
   const reviews = useQuery({ queryKey: ["reviews", "album", id], queryFn: () => albumReviews(id) });
 
@@ -88,10 +91,25 @@ function AlbumPage() {
         <section className="mt-10 px-4 md:px-10">
           <h2 className="mb-3 text-xl font-bold">Reviews</h2>
           <div className="grid gap-3 md:grid-cols-2">
-            {reviews.data?.map((r) => <ReviewCard key={r.id} review={r} showAlbum={false} />)}
+            {reviews.data?.map((r) => (
+              <ReviewCard
+                key={r.id}
+                review={r}
+                showAlbum={false}
+                onShare={() => {
+                  if (!r.profiles) return;
+                  setShareData({ album: a, tier: r.tier, body: r.body, profile: r.profiles });
+                }}
+              />
+            ))}
           </div>
           {total === 0 && <p className="text-sm text-muted-foreground">No reviews yet. Be the first.</p>}
         </section>
+        <ShareReviewDialog
+          open={shareData !== null}
+          onOpenChange={(open) => { if (!open) setShareData(null); }}
+          data={shareData}
+        />
       </div>
     </AppShell>
   );

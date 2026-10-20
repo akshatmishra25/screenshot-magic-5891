@@ -1,11 +1,12 @@
 import { Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { Share2 } from "lucide-react";
 import type { ReviewRow } from "@/lib/reviews";
 import { musicSource, getAlbumSync } from "@/lib/albums";
 import { AlbumCover } from "./AlbumCover";
 import { TierBadge } from "./TierBadge";
 
-export function ReviewCard({ review, showAlbum = true }: { review: ReviewRow; showAlbum?: boolean }) {
+export function ReviewCard({ review, showAlbum = true, onShare }: { review: ReviewRow; showAlbum?: boolean; onShare?: () => void }) {
   // Use TanStack Query to asynchronously fetch album details from musicSource (Spotify)
   const { data: album, isLoading } = useQuery({
     queryKey: ["album", review.album_id],
@@ -41,17 +42,29 @@ export function ReviewCard({ review, showAlbum = true }: { review: ReviewRow; sh
       )}
 
       <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          {review.profiles && (
-            <Link
-              to="/u/$username"
-              params={{ username: review.profiles.username }}
-              className="truncate text-sm font-bold hover:underline"
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            {review.profiles && (
+              <Link
+                to="/u/$username"
+                params={{ username: review.profiles.username }}
+                className="truncate text-sm font-bold hover:underline"
+              >
+                {name}
+              </Link>
+            )}
+            <TierBadge tier={review.tier} />
+          </div>
+          {onShare && (
+            <button
+              type="button"
+              onClick={onShare}
+              aria-label={`Share review of ${name}`}
+              className="shrink-0 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-elevated hover:text-foreground"
             >
-              {name}
-            </Link>
+              <Share2 className="h-4 w-4" />
+            </button>
           )}
-          <TierBadge tier={review.tier} />
         </div>
 
         {showAlbum && (
