@@ -172,7 +172,7 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
     ctx.font = "italic 500 40px Manrope, sans-serif";
     const quoteLines = wrapText(ctx, `“${data.body}”`, W - 220, 2);
     drawCenteredLines(ctx, quoteLines, W / 2, y, 52);
-    y += quoteLines.length * 52 + 8;
+    y += quoteLines.length * 52 + 72;
   }
 
   // Footer: reviewer + branding
@@ -180,8 +180,8 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   ctx.strokeStyle = "rgba(255,255,255,0.12)";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(96, footY - 58);
-  ctx.lineTo(W - 96, footY - 58);
+  ctx.moveTo(96, footY - 72);
+  ctx.lineTo(W - 96, footY - 72);
   ctx.stroke();
 
   const name = data.profile.display_name || data.profile.username;
