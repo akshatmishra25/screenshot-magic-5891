@@ -180,8 +180,8 @@ export async function renderShareCard(data: ShareCardData): Promise<HTMLCanvasEl
   ctx.strokeStyle = "rgba(255,255,255,0.12)";
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(96, footY - 72);
-  ctx.lineTo(W - 96, footY - 72);
+  ctx.moveTo(96, footY - 58);
+  ctx.lineTo(W - 96, footY - 58);
   ctx.stroke();
 
   const name = data.profile.display_name || data.profile.username;
